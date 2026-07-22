@@ -1,102 +1,241 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Галерея</title>
-  <meta name="description" content="Простая страница для GitHub Pages." />
-  <style>
-    :root{
-      --text:#2C2C2B; --muted:#7D7A75; --border:#E6E5E3;
-      --surface:#F9F8F7; --surface2:#F0EFED; --accent:#2783DE;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial,sans-serif;color:var(--text);background:#fff;line-height:1.5}
-    .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 64px}
-    header{display:flex;gap:14px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:14px;padding:14px 16px;background:#fff;position:sticky;top:12px;backdrop-filter:blur(8px)}
-    .brand{display:flex;gap:10px;align-items:center;min-width:0}
-    .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#5E9FE8);box-shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.04)}
-    h1{margin:0;font-size:16px;letter-spacing:-0.01em}
-    .pill{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:6px 10px;border-radius:999px}
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Остров — скролл-анимация</title>
+	<meta name="description" content="Сайт с эффектом: колесиком листаешь — кадр меняется (параллакс/скролл-сторителлинг)." />
+	<style>
+		:root{
+			--text:#2C2C2B; --muted:#7D7A75; --border:#E6E5E3;
+			--surface:rgba(255,255,255,.82);
+			--surface2:rgba(249,248,247,.85);
+			--shadow:0 1px 2px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.08);
+			--accent:#2783DE;
+			--radius:16px;
+		}
+		*{box-sizing:border-box}
+		html,body{height:100%}
+		body{
+			margin:0;
+			font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial,sans-serif;
+			color:var(--text);
+			background:#fff;
+			line-height:1.5;
+			overflow-x:hidden;
+		}
+		/* Scene */
+		.scene{
+			position:relative;
+			min-height:420vh; /* чем больше — тем длиннее скролл */
+		}
+		.stage{
+			position:sticky;
+			top:0;
+			height:100vh;
+			width:100vw;
+			isolation:isolate;
+			background:#111;
+		}
+		.frame{
+			position:absolute;
+			inset:0;
+			width:100%;
+			height:100%;
+			object-fit:cover;
+			transform:scale(1.05);
+			filter:saturate(1.03) contrast(1.02);
+			opacity:0;
+			transition:opacity 360ms ease;
+			will-change:opacity;
+		}
+		.frame.is-active{opacity:1}
 
-    .hero{margin-top:22px;border:1px solid var(--border);border-radius:16px;padding:20px;background:radial-gradient(900px 380px at 15% -20%, rgba(39,131,222,.12), transparent 55%),radial-gradient(900px 380px at 95% 10%, rgba(240,239,237,1), transparent 55%),#fff}
-    .hero h2{margin:0 0 10px;font-size:30px;line-height:1.15;letter-spacing:-0.02em}
-    .hero p{margin:0;color:var(--muted);max-width:70ch}
+		/* UI */
+		.ui{
+			position:absolute;
+			inset:0;
+			pointer-events:none;
+		}
+		.topbar{
+			pointer-events:auto;
+			position:absolute;
+			top:18px;
+			left:50%;
+			transform:translateX(-50%);
+			width:min(980px, calc(100% - 40px));
+			display:flex;
+			align-items:center;
+			justify-content:space-between;
+			gap:12px;
+			padding:12px 14px;
+			border:1px solid rgba(255,255,255,.25);
+			border-radius:14px;
+			background:var(--surface);
+			backdrop-filter: blur(10px);
+			box-shadow: var(--shadow);
+		}
+		.brand{display:flex;align-items:center;gap:10px;min-width:0}
+		.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#5E9FE8)}
+		.title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+		.badge{font-size:12px;color:var(--muted);background:rgba(255,255,255,.7);border:1px solid var(--border);padding:6px 10px;border-radius:999px}
 
-    .grid{margin-top:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-    .card{border:1px solid var(--border);border-radius:14px;background:#fff;overflow:hidden}
-    .card .img{display:block;width:100%;height:auto;background:var(--surface2)}
-    .card .meta{padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center}
-    .card .name{font-weight:650;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);text-decoration:none;color:var(--text);background:#fff;font-weight:600;font-size:13px}
-    .btn:focus-visible{outline:3px solid rgba(39,131,222,.35);outline-offset:2px}
+		.panel{
+			pointer-events:auto;
+			position:absolute;
+			left:50%;
+			bottom:22px;
+			transform:translateX(-50%);
+			width:min(980px, calc(100% - 40px));
+			display:grid;
+			grid-template-columns: 1.2fr .8fr;
+			gap:14px;
+		}
+		.card{
+			border:1px solid rgba(255,255,255,.25);
+			border-radius:var(--radius);
+			background:var(--surface2);
+			backdrop-filter: blur(10px);
+			box-shadow: var(--shadow);
+			padding:14px 14px;
+		}
+		.card h1{margin:0 0 6px;font-size:20px;letter-spacing:-0.02em;line-height:1.15}
+		.card p{margin:0;color:var(--muted);font-size:14px}
+		.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+		.kpi{padding:10px 12px;border:1px solid rgba(0,0,0,.06);border-radius:14px;background:rgba(255,255,255,.72)}
+		.kpi .v{font-weight:800;letter-spacing:-0.02em}
+		.kpi .l{font-size:12px;color:var(--muted)}
+		.progress{
+			margin-top:10px;
+			height:8px;
+			border-radius:999px;
+			background:rgba(0,0,0,.10);
+			overflow:hidden;
+		}
+		.progress > div{
+			height:100%;
+			width:0%;
+			background:linear-gradient(90deg, rgba(39,131,222,.85), rgba(94,159,232,.95));
+			border-radius:999px;
+			transition:width 80ms linear;
+		}
+		.hint{margin-top:8px;font-size:12px;color:var(--muted)}
 
-    .video{margin-top:16px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#000}
-    video{display:block;width:100%;height:auto}
+		/* Section after scene */
+		.content{
+			max-width:980px;
+			margin:0 auto;
+			padding:44px 20px 80px;
+		}
+		.block{border:1px solid var(--border);border-radius:16px;padding:18px 18px;background:#fff}
+		.block h2{margin:0 0 8px;font-size:18px;letter-spacing:-0.01em}
+		.block ul{margin:0;padding-left:18px;color:var(--muted)}
+		.block li{margin:6px 0}
+		code{background:#F9F8F7;border:1px solid var(--border);border-radius:8px;padding:2px 6px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
 
-    .how{margin-top:18;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--surface)}
-    .how h3{margin:0 0 8px;font-size:15px}
-    .how ol{margin:0;padding-left:18px;color:var(--muted)}
-    .how li{margin:6px 0}
-
-    @media (max-width: 860px){
-      .grid{grid-template-columns:1fr}
-      .hero h2{font-size:26px}
-      header{position:static}
-    }
-  </style>
+		@media (max-width: 860px){
+			.panel{grid-template-columns:1fr}
+			.kpis{grid-template-columns:1fr}
+			.card h1{font-size:18px}
+		}
+		@media (prefers-reduced-motion: reduce){
+			.frame{transition:none}
+		}
+	</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <h1>noahyudistyo16-oss / -</h1>
-      </div>
-      <div class="pill">Готово для GitHub Pages</div>
-    </header>
+	<section class="scene" id="scene">
+		<div class="stage" aria-label="Сцена">
+			<img class="frame is-active" data-frame="0" src="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%201.png" alt="Остров — кадр 1" />
+			<img class="frame" data-frame="1" src="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%202.png" alt="Остров — кадр 2" />
+			<img class="frame" data-frame="2" src="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%203.png" alt="Остров — кадр 3" />
+			<img class="frame" data-frame="3" src="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%204.png" alt="Остров — кадр 4" />
 
-    <section class="hero">
-      <h2>Простая страница-галерея</h2>
-      <p>Я сделал стартовую страницу, которая показывает твои изображения и видео из репозитория. Дальше ты можешь менять подписи или добавлять новые файлы.</p>
-    </section>
+			<div class="ui">
+				<div class="topbar">
+					<div class="brand">
+						<div class="logo" aria-hidden="true"></div>
+						<div class="title">Остров • скролл-анимация</div>
+					</div>
+					<div class="badge" id="badge">Кадр 1/4</div>
+				</div>
 
-    <section class="grid" aria-label="Галерея">
-      <article class="card">
-        <img class="img" src="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%201.png" alt="остров 1" />
-        <div class="meta"><div class="name">остров 1</div><a class="btn" href="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%201.png" target="_blank" rel="noreferrer">Открыть</a></div>
-      </article>
-      <article class="card">
-        <img class="img" src="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%202.png" alt="остров 2" />
-        <div class="meta"><div class="name">остров 2</div><a class="btn" href="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%202.png" target="_blank" rel="noreferrer">Открыть</a></div>
-      </article>
-      <article class="card">
-        <img class="img" src="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%203.png" alt="остров 3" />
-        <div class="meta"><div class="name">остров 3</div><a class="btn" href="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%203.png" target="_blank" rel="noreferrer">Открыть</a></div>
-      </article>
-      <article class="card">
-        <img class="img" src="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%204.png" alt="остров 4" />
-        <div class="meta"><div class="name">остров 4</div><a class="btn" href="%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%204.png" target="_blank" rel="noreferrer">Открыть</a></div>
-      </article>
-    </section>
+				<div class="panel">
+					<div class="card">
+						<h1>Колёсиком листаешь → картинка меняется</h1>
+						<p>Это базовый “frame-by-frame” скролл-параллакс: мы «пролистываем» 4 кадра острова. Дальше можно добавить видео-переходы и текстуры.</p>
+						<div class="progress" aria-label="Прогресс"><div id="bar"></div></div>
+						<div class="hint">Прокрути вниз. Для GitHub Pages файл должен называться <code>index.html</code>.</div>
+					</div>
+					<div class="card">
+						<div class="kpis">
+							<div class="kpi"><div class="v" id="frameLabel">1</div><div class="l">Текущий кадр</div></div>
+							<div class="kpi"><div class="v">4</div><div class="l">Всего кадров</div></div>
+							<div class="kpi"><div class="v">main</div><div class="l">Ветка</div></div>
+							<div class="kpi"><div class="v">GitHub Pages</div><div class="l">Хостинг</div></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
 
-    <section class="video" aria-label="Видео">
-      <video controls preload="metadata">
-        <source src="1-2.mp4" type="video/mp4" />
-        Твой браузер не поддерживает video.
-      </video>
-    </section>
+	<section class="content">
+		<div class="block">
+			<h2>Как включить GitHub Pages</h2>
+			<ul>
+				<li>Repo → <strong>Settings</strong> → <strong>Pages</strong></li>
+				<li><strong>Build and deployment</strong> → <strong>Deploy from a branch</strong></li>
+				<li>Branch: <strong>main</strong>, Folder: <strong>/(root)</strong> → Save</li>
+			</ul>
+		</div>
+	</section>
 
-    <section class="how" id="how">
-      <h3>Как “развернуть” на GitHub Pages</h3>
-      <ol>
-        <li>Зайди в репозиторий → <strong>Settings</strong></li>
-        <li>Открой <strong>Pages</strong></li>
-        <li>В <strong>Build and deployment</strong> выбери: <strong>Deploy from a branch</strong></li>
-        <li>Branch: <strong>main</strong>, Folder: <strong>/(root)</strong> → Save</li>
-        <li>GitHub покажет URL сайта (обычно через 1–2 минуты)</li>
-      </ol>
-    </section>
-  </div>
+	<script>
+		(function(){
+			const scene = document.getElementById('scene');
+			const frames = Array.from(document.querySelectorAll('.frame'));
+			const badge = document.getElementById('badge');
+			const bar = document.getElementById('bar');
+			const frameLabel = document.getElementById('frameLabel');
+
+			const frameCount = frames.length;
+			let lastIndex = 0;
+
+			function clamp(n,min,max){return Math.max(min, Math.min(max,n));}
+
+			function onScroll(){
+				const rect = scene.getBoundingClientRect();
+				const vh = window.innerHeight;
+
+				// Прогресс сцены: 0..1
+				const total = scene.offsetHeight - vh;
+				const progressed = clamp((-rect.top) / (total || 1), 0, 1);
+
+				// Индекс кадра: 0..frameCount-1
+				const idx = clamp(Math.round(progressed * (frameCount - 1)), 0, frameCount - 1);
+
+				if (idx !== lastIndex){
+					frames[lastIndex].classList.remove('is-active');
+					frames[idx].classList.add('is-active');
+					lastIndex = idx;
+					badge.textContent = `Кадр ${idx+1}/${frameCount}`;
+					frameLabel.textContent = String(idx+1);
+				}
+
+				bar.style.width = (progressed * 100).toFixed(1) + '%';
+			}
+
+			// Предзагрузка (чтобы не мигало при первом свитче)
+			for (const img of frames){
+				const i = new Image();
+				i.src = img.getAttribute('src');
+			}
+
+			onScroll();
+			window.addEventListener('scroll', onScroll, { passive: true });
+			window.addEventListener('resize', onScroll);
+		})();
+	</script>
 </body>
 </html>
